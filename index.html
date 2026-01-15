@@ -15,9 +15,9 @@
         .id-badge { text-align: center; margin-bottom: 1rem; }
         .id-badge span { background: #f0f0f0; color: #888; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: normal; border: 1px solid #eee; }
         
-        /* SNSボタンの調整 */
-        .sns-container { display: flex; gap: 10px; margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0; flex-wrap: wrap; }
-        .sns-button { /* flex: 1; を削除して自然なサイズに */ display: inline-flex; align-items: center; justify-content: center; padding: 8px 16px; border-radius: 8px; text-decoration: none; color: #fff; font-weight: bold; font-size: 0.9rem; transition: opacity 0.2s; white-space: nowrap; }
+        /* SNSボタン横並び用 */
+        .sns-container { display: flex; gap: 10px; margin-top: 5px; }
+        .sns-button { flex: 1; display: inline-flex; align-items: center; justify-content: center; padding: 12px; border-radius: 8px; text-decoration: none; color: #fff; font-weight: bold; font-size: 0.9rem; transition: opacity 0.2s; }
         .sns-button:hover { opacity: 0.8; }
         .x-color { background-color: #000; }
         .insta-color { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
@@ -58,8 +58,7 @@
                     let html = `<div class="id-badge"><span>ID：${userData}</span></div>`;
                     html += `<h1>${pageTitle}</h1>`;
                     
-                    let snsButtonsHtml = ''; // SNSボタン用のHTMLを一時的に保持する変数
-                    let mainHtml = ''; // SNS以外のプロフィール情報を保持する変数
+                    let snsButtons = [];
 
                     for (let i = 2; i < headers.length; i++) {
                         if (!userData[i]) continue;
@@ -68,16 +67,15 @@
                         const cleanLabel = headerText.replace(/[（\(].*$/, "");
                         const val = userData[i];
 
-                        // XとInstagramはボタンとして処理
                         if (headerText.includes('X') || headerText.toLowerCase().includes('twitter')) {
-                            const xId = val.replace(/^@/, '').replace(/^https?:\/\/x\.com\//, '');
-                            snsButtonsHtml += `<a href="x.com{xId}" target="_blank" rel="noopener noreferrer" class="sns-button x-color">X</a>`;
+                            // ID抽出とURL生成を確実にする
+                            const xId = val.replace(/^@/, '').split('/').pop();
+                            snsButtons.push('<a href="x.com' + xId + '" target="_blank" rel="noopener noreferrer" class="sns-button x-color">X</a>');
                         } else if (headerText.includes('Instagram') || headerText.includes('インスタ')) {
-                            const instaId = val.replace(/^@/, '').replace(/^https?:\/\/instagram\.com\//, '');
-                            snsButtonsHtml += `<a href="instagram.com{instaId}" target="_blank" rel="noopener noreferrer" class="sns-button insta-color">Instagram</a>`;
+                            const instaId = val.replace(/^@/, '').split('/').pop().replace(/\/$/, '');
+                            snsButtons.push('<a href="instagram.com' + instaId + '" target="_blank" rel="noopener noreferrer" class="sns-button insta-color">Instagram</a>');
                         } else {
-                            // それ以外は通常のプロフィール情報としてmainHtmlに追加
-                            mainHtml += `
+                            html += `
                                 <div class="info-item">
                                     <span class="label">${cleanLabel}</span>
                                     <span class="value">${val}</span>
@@ -86,18 +84,12 @@
                         }
                     }
 
-                    // SNSボタンがある場合、mainHtml（名前の下）の直前に挿入
-                    if (snsButtonsHtml.length > 0) {
-                        // mainHtmlの先頭にSNSコンテナを挿入する形に変更
-                        mainHtml = `
-                            <div class="label">SNS</div>
-                            <div class="sns-container">${snsButtonsHtml}</div>
-                        ` + mainHtml;
+                    if (snsButtons.length > 0) {
+                        html += `<div class="label" style="margin-bottom:8px;">SNS</div>`;
+                        html += `<div class="sns-container">${snsButtons.join('')}</div>`;
                     }
-                    
-                    html += mainHtml;
-                    app.innerHTML = html;
 
+                    app.innerHTML = html;
                 } else {
                     app.innerHTML = `<h1>${pageTitle}</h1><p style="text-align:center;">ID「${targetId}」の登録がありません。</p>`;
                 }
