@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>プロフィール</title>
-    <!-- アイコンの読み込みURLを修正 -->
     <link rel="stylesheet" href="cdnjs.cloudflare.com">
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; margin: 0; }
@@ -62,8 +61,8 @@
                     return result.map(cell => cell.replace(/^"(.*)"$/, '$1'));
                 });
 
-                // ID一致行を検索（B列=index 1）
-                const user = rows.find(row => {
+                const dataRows = rows.slice(1);
+                const user = dataRows.find(row => {
                     const rId = String(row[1] || "").padStart(3, '0');
                     const tId = String(targetId).padStart(3, '0');
                     return rId === tId;
@@ -72,7 +71,7 @@
                 document.getElementById('loading').style.display = 'none';
 
                 if (user && targetId !== "") {
-                    // 各項目のマッピング（B=1, C=2, D=3, E=4, F=5, G=6, H=7）
+                    // A=0, B=1(ID), C=2(Name), D=3(X), E=4(Insta), F=5(Club), G=6(Area), H=7(Intro)
                     document.getElementById('disp-name').innerText = user[2] || "名前なし";
                     document.getElementById('disp-id').innerText = 'ID：' + (user[1] || targetId);
                     document.getElementById('disp-clubs').innerText = user[5] || "未回答";
@@ -83,11 +82,10 @@
                     const xAccount = (user[3] || "").replace('@', '').trim();
                     const instaAccount = (user[4] || "").replace('@', '').trim();
 
-                    // リンク記述の修正（バッククォートを使用）
-                    if (xAccount) {
+                    if (xAccount && xAccount !== "" && xAccount !== "undefined") {
                         snsHtml += `<a href="x.com{xAccount}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
                     }
-                    if (instaAccount) {
+                    if (instaAccount && instaAccount !== "" && instaAccount !== "undefined") {
                         snsHtml += `<a href="instagram.com{instaAccount}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
                     }
                     document.getElementById('sns-container').innerHTML = snsHtml;
