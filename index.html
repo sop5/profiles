@@ -15,7 +15,9 @@
         .id-badge { text-align: center; margin-bottom: 1rem; }
         .id-badge span { background: #f0f0f0; color: #888; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: normal; border: 1px solid #eee; }
         
-        .sns-button { display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; margin-top: 5px; border-radius: 8px; text-decoration: none; color: #fff; font-weight: bold; font-size: 0.9rem; transition: opacity 0.2s; }
+        /* SNSボタン横並び用 */
+        .sns-container { display: flex; gap: 10px; margin-top: 5px; }
+        .sns-button { flex: 1; display: inline-flex; align-items: center; justify-content: center; padding: 12px; border-radius: 8px; text-decoration: none; color: #fff; font-weight: bold; font-size: 0.9rem; transition: opacity 0.2s; }
         .sns-button:hover { opacity: 0.8; }
         .x-color { background-color: #000; }
         .insta-color { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); }
@@ -32,33 +34,13 @@
     <script>
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRS0zEg8V_eSDWltQxsveXX0Zl0LSv7Awk9pnALuGlDMwDunbV4Oe3fF-1y6R2OWFMGqF5hX_X_ZMz/pub?gid=1412439924&single=true&output=csv';
 
-        function formatValue(label, value) {
-            if (!value) return '';
-            const trimmedValue = value.trim();
-            const cleanId = trimmedValue.replace(/^@/, '');
-            
-            // X判定
-            if (label.includes('X') || label.toLowerCase().includes('twitter')) {
-                const url = trimmedValue.startsWith('http') ? trimmedValue : 'x.com' + cleanId;
-                return '<a href="' + url + '" target="_blank" class="sns-button x-color">X アカウントを開く</a>';
-            }
-            
-            // Instagram判定
-            if (label.includes('Instagram') || label.includes('インスタ')) {
-                const url = trimmedValue.startsWith('http') ? trimmedValue : 'instagram.com' + cleanId;
-                return '<a href="' + url + '" target="_blank" class="sns-button insta-color">Instagram を開く</a>';
-            }
-
-            return trimmedValue;
-        }
-
         async function loadProfile() {
             const app = document.getElementById('app');
             const targetId = decodeURIComponent(window.location.hash.substring(1)).trim(); 
             const pageTitle = 'STEP ON -party- #5<br>ゲストプロフィール';
 
             if (!targetId) {
-                app.innerHTML = '<h1>' + pageTitle + '</h1><p style="text-align:center; color:#666;">QRコードをスキャンしてください</p>';
+                app.innerHTML = `<h1>${pageTitle}</h1><p style="text-align:center; color:#666;">QRコードをスキャンしてください</p>`;
                 return;
             }
 
@@ -73,27 +55,47 @@
                 const userData = rows.find((row, index) => index > 0 && String(row[1]) === targetId);
 
                 if (userData) {
-                    let html = '<div class="id-badge"><span>ID：' + userData[1] + '</span></div>';
-                    html += '<h1>' + pageTitle + '</h1>';
+                    let html = `<div class="id-badge"><span>ID：${userData[1]}</span></div>`;
+                    html += `<h1>${pageTitle}</h1>`;
                     
+                    let snsButtons = [];
+
                     for (let i = 2; i < headers.length; i++) {
-                        if (userData[i]) { 
-                            const cleanLabel = headers[i].replace(/[（\(].*$/, "");
-                            const displayValue = formatValue(headers[i], userData[i]);
-                            
-                            html += '<div class="info-item">';
-                            html += '<span class="label">' + cleanLabel + '</span>';
-                            html += '<span class="value">' + displayValue + '</span>';
-                            html += '</div>';
+                        if (!userData[i]) continue;
+
+                        const headerText = headers[i];
+                        const cleanLabel = headerText.replace(/[（\(].*$/, "");
+                        const val = userData[i];
+
+                        // XとInstagramはボタンとしてストック、それ以外は通常表示
+                        if (headerText.includes('X') || headerText.toLowerCase().includes('twitter')) {
+                            const xId = val.replace(/^@/, '').replace(/^https?:\/\/x\.com\//, '');
+                            snsButtons.push(`<a href="x.com{xId}" target="_blank" rel="noopener noreferrer" class="sns-button x-color">X</a>`);
+                        } else if (headerText.includes('Instagram') || headerText.includes('インスタ')) {
+                            const instaId = val.replace(/^@/, '').replace(/^https?:\/\/instagram\.com\//, '');
+                            snsButtons.push(`<a href="instagram.com{instaId}" target="_blank" rel="noopener noreferrer" class="sns-button insta-color">Instagram</a>`);
+                        } else {
+                            html += `
+                                <div class="info-item">
+                                    <span class="label">${cleanLabel}</span>
+                                    <span class="value">${val}</span>
+                                </div>
+                            `;
                         }
                     }
+
+                    // SNSボタンがある場合、最後に横並びで表示
+                    if (snsButtons.length > 0) {
+                        html += `<div class="label" style="margin-bottom:8px;">SNS</div>`;
+                        html += `<div class="sns-container">${snsButtons.join('')}</div>`;
+                    }
+
                     app.innerHTML = html;
                 } else {
-                    app.innerHTML = '<h1>' + pageTitle + '</h1><p style="text-align:center;">ID「' + targetId + '」の登録がありません。</p>';
+                    app.innerHTML = `<h1>${pageTitle}</h1><p style="text-align:center;">ID「${targetId}」の登録がありません。</p>`;
                 }
             } catch (e) {
                 app.innerHTML = '<h1>ERROR</h1><p>データの取得に失敗しました。</p>';
-                console.error(e);
             }
         }
 
