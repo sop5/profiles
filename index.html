@@ -27,7 +27,7 @@
         <div id="disp-id" class="id-label"></div>
         <div class="sns-container" id="sns-container"></div>
         <div class="label">好きなサッカークラブ</div><div id="disp-clubs" class="content"></div>
-        <div class="label">観戦エリア</div><div id="area" class="content"></div>
+        <div class="label">観戦エリア</div><div id="disp-area" class="content"></div>
         <div class="label">自己紹介</div><div id="disp-intro" class="content"></div>
     </div>
     <p id="loading">プロフィールを読み込み中...</p>
@@ -62,6 +62,7 @@
                 });
 
                 const dataRows = rows.slice(1);
+                // B列(index 1)を検索
                 const user = dataRows.find(row => {
                     const rId = String(row[1] || "").padStart(3, '0');
                     const tId = String(targetId).padStart(3, '0');
@@ -71,6 +72,7 @@
                 document.getElementById('loading').style.display = 'none';
 
                 if (user && targetId !== "") {
+                    // C=2, B=1, F=5, G=6, H=7
                     document.getElementById('disp-name').innerText = user[2] || "名前なし";
                     document.getElementById('disp-id').innerText = 'ID：' + (user[1] || targetId);
                     document.getElementById('disp-clubs').innerText = user[5] || "未回答";
@@ -78,7 +80,6 @@
                     document.getElementById('disp-intro').innerText = user[7] || "未回答";
                     
                     let snsHtml = '';
-                    // アカウント名から@を消去し、前後の空白を削除
                     const xAccount = (user[3] || "").replace('@', '').trim();
                     const instaAccount = (user[4] || "").replace('@', '').trim();
 
