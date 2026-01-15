@@ -3,101 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>プロフィール</title>
-    <link rel="stylesheet" href="cdnjs.cloudflare.com">
+    <title>DJ Event Profile</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; margin: 0; }
-        .card { background: white; width: 100%; max-width: 420px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; display: none; }
-        h1 { margin: 0 0 5px 0; font-size: 24px; color: #1a1a1a; }
-        .id-label { color: #888; font-size: 14px; margin-bottom: 20px; font-weight: bold; }
-        .sns-container { display: flex; justify-content: center; gap: 15px; margin: 20px 0; flex-wrap: wrap; }
-        .sns-btn { text-decoration: none; color: white; padding: 10px 22px; border-radius: 30px; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; transition: transform 0.2s; }
-        .sns-btn:active { transform: scale(0.95); }
-        .btn-x { background: #000; }
-        .btn-insta { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
-        .label { font-weight: bold; font-size: 12px; color: #4b5563; background: #f3f4f6; padding: 4px 10px; border-radius: 6px; display: inline-block; margin-top: 15px; }
-        .content { margin-top: 6px; margin-bottom: 15px; line-height: 1.7; border-bottom: 1px solid #f3f4f6; padding-bottom: 12px; text-align: left; white-space: pre-wrap; color: #374151; word-break: break-all; }
-        #loading { margin-top: 60px; color: #666; font-size: 16px; }
-        #error { margin-top: 60px; color: #ef4444; font-weight: bold; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #000; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #1a1a1a; padding: 2rem; border-radius: 15px; border: 1px solid #333; width: 90%; max-width: 400px; text-align: center; box-shadow: 0 0 20px rgba(255,255,255,0.05); }
+        h1 { color: #fff; margin: 1rem 0; font-size: 1.8rem; }
+        p { color: #ccc; font-size: 1rem; line-height: 1.6; white-space: pre-wrap; }
+        .id-badge { display: inline-block; background: #fff; color: #000; padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+        .loading { color: #888; font-size: 0.9rem; }
     </style>
 </head>
 <body>
-    <div id="profile-card" class="card">
-        <h1 id="disp-name"></h1>
-        <div id="disp-id" class="id-label"></div>
-        <div class="sns-container" id="sns-container"></div>
-        <div class="label">好きなサッカークラブ</div><div id="disp-clubs" class="content"></div>
-        <div class="label">観戦エリア</div><div id="disp-area" class="content"></div>
-        <div class="label">自己紹介</div><div id="disp-intro" class="content"></div>
+    <div id="app" class="card">
+        <p class="loading">プロフィールを読み込み中...</p>
     </div>
-    <p id="loading">プロフィールを読み込み中...</p>
-    <p id="error" style="display:none">プロフィールが見つかりませんでした。</p>
 
     <script>
-        const CSV_URL = 'docs.google.com';
-        
-        function getID() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('id')) return urlParams.get('id').trim();
-            const segments = window.location.pathname.split('/').filter(function(s) { return s.length > 0; });
-            return segments[segments.length - 1] || "";
+        // 2026年1月現在、sop5さんが指定したCSV URL
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRS0zEg8V_eSDWltQxsveXX0Zl0LSv7Awk9pnALuGlDMwDunbV4Oe3fF-1y6R2OWFMGqF5hX_X_ZMz/pub?gid=1412439924&single=true&output=csv';
+
+        async function loadProfile() {
+            const app = document.getElementById('app');
+            const targetId = decodeURIComponent(window.location.hash.substring(1)); 
+
+            if (!targetId) {
+                app.innerHTML = '<h1>Welcome</h1><p>QRコードを読み取ってください</p>';
+                return;
+            }
+
+            try {
+                const response = await fetch(CSV_URL);
+                const csvText = await response.text();
+                
+                // CSVを行ごとに分割し、カンマで分割
+                const rows = csvText.split('\n').map(row => row.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1')));
+                
+                // 列の構成を確認：[0]タイムスタンプ, [1]ID, [2]名前, [3]自己紹介... と想定
+                const userData = rows.find(row => row[1] && row[1].trim() === targetId);
+
+                if (userData) {
+                    app.innerHTML = `
+                        <div class="id-badge">ID: ${userData[1]}</div>
+                        <h1>${userData[2] || 'No Name'}</h1>
+                        <p>${userData[3] || ''}</p>
+                    `;
+                } else {
+                    app.innerHTML = '<h1>Not Found</h1><p>プロフィールが見つかりません。<br>登録直後の場合は、数分待ってから再度読み込んでください。</p>';
+                }
+            } catch (e) {
+                app.innerHTML = '<h1>Error</h1><p>データの読み込みに失敗しました。</p>';
+                console.error(e);
+            }
         }
 
-        const targetId = getID();
-
-        fetch(CSV_URL)
-            .then(function(res) { return res.text(); })
-            .then(function(text) {
-                const rows = text.split(/\r?\n/).filter(function(l) { return l.trim().length > 0; }).map(function(line) {
-                    const result = [];
-                    let current = '';
-                    let inQuotes = false;
-                    for (let i = 0; i < line.length; i++) {
-                        const char = line[i];
-                        if (char === '"') inQuotes = !inQuotes;
-                        else if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
-                        else current += char;
-                    }
-                    result.push(current.trim());
-                    return result.map(function(cell) { return cell.replace(/^"(.*)"$/, '$1'); });
-                });
-
-                const dataRows = rows.slice(1);
-                const user = dataRows.find(function(row) {
-                    const rId = String(row[1] || "").padStart(3, '0');
-                    const tId = String(targetId).padStart(3, '0');
-                    return rId === tId;
-                });
-
-                document.getElementById('loading').style.display = 'none';
-
-                if (user && targetId !== "") {
-                    document.getElementById('disp-name').innerText = user[2] || "名前なし";
-                    document.getElementById('disp-id').innerText = 'ID：' + (user[1] || targetId);
-                    document.getElementById('disp-clubs').innerText = user[5] || "未回答";
-                    document.getElementById('disp-area').innerText = user[6] || "未回答";
-                    document.getElementById('disp-intro').innerText = user[7] || "未回答";
-                    
-                    let snsHtml = '';
-                    const xAccount = (user[3] || "").replace('@', '').trim();
-                    const instaAccount = (user[4] || "").replace('@', '').trim();
-
-                    if (xAccount && xAccount !== "" && xAccount !== "undefined") {
-                        snsHtml += '<a href="x.com' + xAccount + '" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>';
-                    }
-                    if (instaAccount && instaAccount !== "" && instaAccount !== "undefined") {
-                        snsHtml += '<a href="instagram.com' + instaAccount + '" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>';
-                    }
-                    document.getElementById('sns-container').innerHTML = snsHtml;
-                    document.getElementById('profile-card').style.display = 'block';
-                } else {
-                    document.getElementById('error').style.display = 'block';
-                }
-            })
-            .catch(function(err) {
-                console.error(err);
-                document.getElementById('loading').innerText = '通信エラーが発生しました。';
-            });
+        // ハッシュが変わったら再読み込み
+        window.addEventListener('hashchange', loadProfile);
+        loadProfile();
     </script>
 </body>
 </html>
