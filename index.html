@@ -5,27 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DJ Event Profile</title>
     <style>
-        /* Aのコードをベースにしたトリコロールデザイン */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f0f2f5; color: #333; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-        
-        /* カードの上部に青、全体は白、アクセントに赤を使用 */
-        .card { background: #fff; padding: 2rem; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-top: 10px; border-top: 8px solid #0055a4; /* 青 */ position: relative; overflow: hidden; }
-        
-        /* カード下部に控えめな赤のライン */
-        .card::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background-color: #ef4135; /* 赤 */ }
-
+        .card { background: #fff; padding: 2rem; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); margin-top: 10px; border-top: 8px solid #0055a4; position: relative; overflow: hidden; }
+        .card::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background-color: #ef4135; }
         h1 { color: #000; margin: 0 0 20px 0; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 1.2rem; line-height: 1.6; }
-        
         .info-item { margin-bottom: 18px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; }
-        
-        /* 項目ラベルを青系に */
         .label { font-size: 0.8rem; color: #0055a4; display: block; margin-bottom: 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
-        
         .value { font-size: 1.1rem; color: #111; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
-        
-        /* IDバッジを管理用として控えめ（薄いグレー）に変更 */
         .id-badge { text-align: center; margin-bottom: 1rem; }
         .id-badge span { background: #f0f0f0; color: #888; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: normal; border: 1px solid #eee; }
+        
+        /* SNSボタン用スタイル */
+        .sns-button { display: inline-flex; align-items: center; justify-content: center; padding: 10px 16px; margin-top: 5px; border-radius: 8px; text-decoration: none; color: #fff; font-weight: bold; font-size: 0.9rem; transition: opacity 0.2s; }
+        .sns-button:hover { opacity: 0.8; }
+        .x-color { background-color: #000; } /* Xは黒 */
+        .insta-color { background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%); } /* インスタ色 */
         
         .loading { text-align: center; color: #999; margin-top: 50px; animation: blink 1.5s infinite; }
         @keyframes blink { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
@@ -37,13 +31,32 @@
     </div>
 
     <script>
-        // 指定されたGoogleスプレッドシートのCSV URL
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRS0zEg8V_eSDWltQxsveXX0Zl0LSv7Awk9pnALuGlDMwDunbV4Oe3fF-1y6R2OWFMGqF5hX_X_ZMz/pub?gid=1412439924&single=true&output=csv';
+
+        // SNSリンク生成関数
+        function formatValue(label, value) {
+            if (!value) return '';
+            const trimmedValue = value.trim();
+            const cleanId = trimmedValue.replace(/^@/, ''); // @を取り除く
+            
+            // X (Twitter) の判定
+            if (label.includes('X') || label.toLowerCase().includes('twitter')) {
+                const url = trimmedValue.startsWith('http') ? trimmedValue : `x.com{cleanId}`;
+                return `<a href="${url}" target="_blank" class="sns-button x-color">X アカウントを開く</a>`;
+            }
+            
+            // Instagram の判定
+            if (label.includes('Instagram') || label.includes('インスタ')) {
+                const url = trimmedValue.startsWith('http') ? trimmedValue : `instagram.com{cleanId}`;
+                return `<a href="${url}" target="_blank" class="sns-button insta-color">Instagram を開く</a>`;
+            }
+
+            return trimmedValue;
+        }
 
         async function loadProfile() {
             const app = document.getElementById('app');
             const targetId = decodeURIComponent(window.location.hash.substring(1)).trim(); 
-
             const pageTitle = 'STEP ON -party- #5<br>ゲストプロフィール';
 
             if (!targetId) {
@@ -54,15 +67,12 @@
             try {
                 const response = await fetch(`${CSV_URL}&cache_bust=${new Date().getTime()}`);
                 const csvText = await response.text();
-                
                 const rows = csvText.split(/\r?\n/).map(row => {
                     return row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
                 });
 
-                if (rows.length < 1) return;
-
                 const headers = rows[0]; 
-                const userData = rows.find(row => row[1] === targetId);
+                const userData = rows.find((row, index) => index > 0 && String(row[1]) === targetId);
 
                 if (userData) {
                     let html = `<div class="id-badge"><span>ID：${userData[1]}</span></div>`;
@@ -71,22 +81,22 @@
                     for (let i = 2; i < headers.length; i++) {
                         if (userData[i]) { 
                             const cleanLabel = headers[i].replace(/[（\(].*$/, "");
+                            const displayValue = formatValue(headers[i], userData[i]);
                             
                             html += `
                                 <div class="info-item">
                                     <span class="label">${cleanLabel}</span>
-                                    <span class="value">${userData[i]}</span>
+                                    <span class="value">${displayValue}</span>
                                 </div>
                             `;
                         }
                     }
                     app.innerHTML = html;
                 } else {
-                    app.innerHTML = `<h1>${pageTitle}</h1><p style="text-align:center;">ID「${targetId}」の登録がありません。<br><br><small style="color:#888;">反映には最大5分かかる場合があります。</small></p>`;
+                    app.innerHTML = `<h1>${pageTitle}</h1><p style="text-align:center;">ID「${targetId}」の登録がありません。</p>`;
                 }
             } catch (e) {
-                app.innerHTML = '<h1>ERROR</h1><p style="text-align:center;">データの取得に失敗しました。</p>';
-                console.error(e);
+                app.innerHTML = '<h1>ERROR</h1><p>データの取得に失敗しました。</p>';
             }
         }
 
