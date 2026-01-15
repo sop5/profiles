@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>プロフィールページ</title>
+    <!-- アイコンフォントの読み込みを修正 -->
     <link rel="stylesheet" href="cdnjs.cloudflare.com">
     <style>
         body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; margin: 0; }
@@ -15,7 +16,7 @@
         .btn-x { background: #000; }
         .btn-insta { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
         .label { font-weight: bold; font-size: 12px; color: #2c3e50; background: #e9ecef; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-top: 15px; }
-        .content { margin-top: 5px; margin-bottom: 15px; line-height: 1.6; border-bottom: 1px solid #eee; padding-bottom: 10px; text-align: left; }
+        .content { margin-top: 5px; margin-bottom: 15px; line-height: 1.6; border-bottom: 1px solid #eee; padding-bottom: 10px; text-align: left; white-space: pre-wrap; }
     </style>
 </head>
 <body>
@@ -33,32 +34,48 @@
     <script>
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRS0zEg8V_eSDWltQxsveXX0Zl0LSv7Awk9pnALuGlDMwDunbV4Oe3fF-1y6R2OWFMGqF5hX_X_ZMz/pub?gid=1412439924&single=true&output=csv';
         const urlParams = new URLSearchParams(window.location.search);
-        const searchId = urlParams.get('id');
+        const searchId = (urlParams.get('id') || "").trim();
 
         fetch(CSV_URL)
             .then(res => res.text())
             .then(text => {
-                const rows = text.split(/\r?\n/).map(row => row.split(','));
-                // rows[0]は見出し。データは1行目以降。IDはB列（index 1）
-                const user = rows.find(row => row[1] && row[1].trim() === searchId);
+                // CSVをパース。見出しを除外。
+                const allRows = text.split(/\r?\n/).filter(line => line.trim().length > 0).map(row => row.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1').trim()));
+                const dataRows = allRows.slice(1);
+                
+                // B列(index 1)で検索。000を0と誤認しないよう文字列比較。
+                const user = dataRows.find(row => {
+                    const rowId = String(row[1] || "").padStart(3, '0');
+                    const targetId = String(searchId).padStart(3, '0');
+                    return rowId === targetId;
+                });
 
                 document.getElementById('loading').style.display = 'none';
-                if (user) {
-                    document.getElementById('name').innerText = user[2]; // C列: 名前
-                    document.getElementById('id-label').innerText = 'ID：' + user[1]; // B列: ID
-                    document.getElementById('clubs').innerText = user[5]; // F列: クラブ
-                    document.getElementById('area').innerText = user[6]; // G列: エリア
-                    document.getElementById('intro').innerText = user[7]; // H列: 自己紹介
+                if (user && searchId !== "") {
+                    document.getElementById('name').innerText = user[2] || "無名";
+                    document.getElementById('id-label').innerText = 'ID：' + user[1];
+                    document.getElementById('clubs').innerText = user[5] || "未回答";
+                    document.getElementById('area').innerText = user[6] || "未回答";
+                    document.getElementById('intro').innerText = user[7] || "未回答";
                     
                     let snsHtml = '';
-                    if(user[3]) snsHtml += `<a href="x.com{user[3].replace('@','').trim()}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
-                    if(user[4]) snsHtml += `<a href="instagram.com{user[4].replace('@','').trim()}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
+                    const xId = String(user[3] || "").replace('@','');
+                    const instaId = String(user[4] || "").replace('@','');
+
+                    if(xId && xId !== "undefined") {
+                        snsHtml += `<a href="x.com{xId}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
+                    }
+                    if(instaId && instaId !== "undefined") {
+                        snsHtml += `<a href="instagram.com{instaId}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
+                    }
                     document.getElementById('sns-container').innerHTML = snsHtml;
-                    
                     document.getElementById('profile-card').style.display = 'block';
                 } else {
                     document.getElementById('error').style.display = 'block';
                 }
+            })
+            .catch(err => {
+                document.getElementById('loading').innerText = '通信エラー';
             });
     </script>
 </body>
