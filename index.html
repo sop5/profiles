@@ -3,56 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guest Profile</title>
+    <title>DJ Event Profile</title>
     <style>
         body { font-family: 'Helvetica Neue', Arial, sans-serif; background-color: #000; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
-        .card { background: #1a1a1a; padding: 2rem; border-radius: 15px; border: 1px solid #333; width: 100%; max-width: 500px; box-shadow: 0 0 20px rgba(255,255,255,0.05); }
-        h1 { color: #fff; margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; }
-        .info-item { margin-bottom: 15px; border-bottom: 1px dashed #333; padding-bottom: 8px; }
-        .label { font-size: 0.8rem; color: #888; display: block; margin-bottom: 2px; }
-        .value { font-size: 1.1rem; color: #fff; white-space: pre-wrap; word-wrap: break-word; }
+        .card { background: #111; padding: 2rem; border-radius: 15px; border: 1px solid #333; width: 100%; max-width: 450px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        h1 { color: #fff; margin-bottom: 1.5rem; text-align: center; border-bottom: 2px solid #444; padding-bottom: 10px; font-size: 1.4rem; }
+        .info-item { margin-bottom: 15px; border-bottom: 1px solid #222; padding-bottom: 8px; }
+        .label { font-size: 0.75rem; color: #888; display: block; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 1px; }
+        .value { font-size: 1.1rem; color: #eee; white-space: pre-wrap; word-wrap: break-word; }
         .id-badge { text-align: center; margin-bottom: 1rem; }
         .id-badge span { background: #fff; color: #000; padding: 3px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
-        .loading { text-align: center; color: #888; }
+        .loading { text-align: center; color: #666; animation: blink 1.5s infinite; }
+        @keyframes blink { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
     </style>
 </head>
 <body>
     <div id="app" class="card">
-        <p class="loading">プロフィールを読み込み中...</p>
+        <p class="loading">LOADING PROFILE...</p>
     </div>
 
     <script>
-        const CSV_URL = 'docs.google.com';
+        // 2026/01/15 sop5さん指定のCSV URL
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRS0zEg8V_eSDWltQxsveXX0Zl0LSv7Awk9pnALuGlDMwDunbV4Oe3fF-1y6R2OWFMGqF5hX_X_ZMz/pub?gid=1412439924&single=true&output=csv';
 
         async function loadProfile() {
             const app = document.getElementById('app');
             const targetId = decodeURIComponent(window.location.hash.substring(1)).trim(); 
 
             if (!targetId) {
-                app.innerHTML = '<h1>Welcome</h1><p style="text-align:center;">QRコードを読み取ってください</p>';
+                app.innerHTML = '<h1>Welcome</h1><p style="text-align:center; color:#888;">QRコードをスキャンしてください</p>';
                 return;
             }
 
             try {
-                const response = await fetch(CSV_URL);
+                // キャッシュ回避のためURLに時間を付与し、最新データを取得しやすくする
+                const response = await fetch(`${CSV_URL}&cache_bust=${new Date().getTime()}`);
                 const csvText = await response.text();
                 
-                // CSVをパース（改行とカンマで分割。引用符も考慮）
-                const rows = csvText.split('\n').map(row => {
+                // CSVを行ごとに分解し、各セルを配列化
+                const rows = csvText.split(/\r?\n/).map(row => {
                     return row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
                 });
 
                 const headers = rows[0]; // 1行目（タイムスタンプ, ID, 名前...）
-                // 2列目（インデックス1）がID列であると想定
+                // 2列目（インデックス1）がID列であると想定して検索
                 const userData = rows.find(row => row[1] === targetId);
 
                 if (userData) {
                     let html = `<div class="id-badge"><span>ID: ${userData[1]}</span></div>`;
                     html += `<h1>GUEST PROFILE</h1>`;
                     
-                    // すべての項目をループで表示（タイムスタンプ(0)とID(1)以外を表示したい場合は i=2 から開始）
+                    // 3列目（インデックス2）以降をすべてループして表示
                     for (let i = 2; i < headers.length; i++) {
-                        if (userData[i]) { // 値が入っている場合のみ表示
+                        if (userData[i]) { 
                             html += `
                                 <div class="info-item">
                                     <span class="label">${headers[i]}</span>
@@ -63,10 +66,10 @@
                     }
                     app.innerHTML = html;
                 } else {
-                    app.innerHTML = '<h1>Not Found</h1><p style="text-align:center;">プロフィールが見つかりません。入力直後の場合は5分ほどお待ちください。</p>';
+                    app.innerHTML = `<h1>NOT FOUND</h1><p style="text-align:center;">ID「${targetId}」の登録がありません。<br><br><small style="color:#666;">反映には最大5分かかる場合があります。</small></p>`;
                 }
             } catch (e) {
-                app.innerHTML = '<h1>Error</h1><p style="text-align:center;">データの読み込みに失敗しました。</p>';
+                app.innerHTML = '<h1>ERROR</h1><p style="text-align:center;">データの取得に失敗しました。</p>';
                 console.error(e);
             }
         }
