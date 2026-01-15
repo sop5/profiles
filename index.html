@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>プロフィールページ</title>
+    <link rel="stylesheet" href="cdnjs.cloudflare.com">
+    <style>
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .card { background: white; width: 100%; max-width: 400px; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; display: none; }
+        h1 { margin-bottom: 5px; font-size: 24px; }
+        .id-label { color: #888; font-size: 14px; margin-bottom: 20px; font-weight: bold; }
+        .sns-container { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
+        .sns-btn { text-decoration: none; color: white; padding: 10px 20px; border-radius: 25px; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
+        .btn-x { background: #000; }
+        .btn-insta { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+        .label { font-weight: bold; font-size: 12px; color: #2c3e50; background: #e9ecef; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-top: 15px; }
+        .content { margin-top: 5px; margin-bottom: 15px; line-height: 1.6; border-bottom: 1px solid #eee; padding-bottom: 10px; text-align: left; }
+    </style>
+</head>
+<body>
+    <div id="profile-card" class="card">
+        <h1 id="name"></h1>
+        <div id="id-label" class="id-label"></div>
+        <div class="sns-container" id="sns-container"></div>
+        <div class="label">好きなサッカークラブ</div><div id="clubs" class="content"></div>
+        <div class="label">観戦エリア</div><div id="area" class="content"></div>
+        <div class="label">自己紹介</div><div id="intro" class="content"></div>
+    </div>
+    <p id="loading">読み込み中...</p>
+    <p id="error" style="display:none">プロフィールが見つかりませんでした。</p>
+
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRS0zEg8V_eSDWltQxsveXX0Zl0LSv7Awk9pnALuGlDMwDunbV4Oe3fF-1y6R2OWFMGqF5hX_X_ZMz/pub?gid=1412439924&single=true&output=csv';
+        const urlParams = new URLSearchParams(window.location.search);
+        const searchId = urlParams.get('id');
+
+        fetch(CSV_URL)
+            .then(res => res.text())
+            .then(text => {
+                const rows = text.split(/\r?\n/).map(row => row.split(','));
+                // rows[0]は見出し。データは1行目以降。IDはB列（index 1）
+                const user = rows.find(row => row[1] && row[1].trim() === searchId);
+
+                document.getElementById('loading').style.display = 'none';
+                if (user) {
+                    document.getElementById('name').innerText = user[2]; // C列: 名前
+                    document.getElementById('id-label').innerText = 'ID：' + user[1]; // B列: ID
+                    document.getElementById('clubs').innerText = user[5]; // F列: クラブ
+                    document.getElementById('area').innerText = user[6]; // G列: エリア
+                    document.getElementById('intro').innerText = user[7]; // H列: 自己紹介
+                    
+                    let snsHtml = '';
+                    if(user[3]) snsHtml += `<a href="x.com{user[3].replace('@','').trim()}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
+                    if(user[4]) snsHtml += `<a href="instagram.com{user[4].replace('@','').trim()}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
+                    document.getElementById('sns-container').innerHTML = snsHtml;
+                    
+                    document.getElementById('profile-card').style.display = 'block';
+                } else {
+                    document.getElementById('error').style.display = 'block';
+                }
+            });
+    </script>
+</body>
+</html>
