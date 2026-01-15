@@ -34,8 +34,9 @@
     <p id="error" style="display:none">プロフィールが見つかりませんでした。</p>
 
     <script>
-        const CSV_URL = 'docs.google.com';
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRS0zEg8V_eSDWltQxsveXX0Zl0LSv7Awk9pnALuGlDMwDunbV4Oe3fF-1y6R2OWFMGqF5hX_X_ZMz/pub?gid=1412439924&single=true&output=csv';
         
+        // ID取得：URLパラメータ（?id=）または パス末尾（/000）から取得
         function getID() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('id')) return urlParams.get('id').trim();
@@ -48,6 +49,7 @@
         fetch(CSV_URL)
             .then(res => res.text())
             .then(text => {
+                // CSV解析：カンマで分割。引用符内のカンマにも対応
                 const rows = text.split(/\r?\n/).filter(l => l.trim().length > 0).map(line => {
                     const result = [];
                     let current = '';
@@ -61,9 +63,8 @@
                     return result.map(cell => cell.replace(/^"(.*)"$/, '$1'));
                 });
 
-                const dataRows = rows.slice(1);
-                // B列(index 1)を検索
-                const user = dataRows.find(row => {
+                // ID一致行を検索（B列=index 1）
+                const user = rows.find(row => {
                     const rId = String(row[1] || "").padStart(3, '0');
                     const tId = String(targetId).padStart(3, '0');
                     return rId === tId;
@@ -72,7 +73,7 @@
                 document.getElementById('loading').style.display = 'none';
 
                 if (user && targetId !== "") {
-                    // 各項目の割り当て（B=1, C=2, D=3, E=4, F=5, G=6, H=7）
+                    // 各項目のマッピング（B=1, C=2, D=3, E=4, F=5, G=6, H=7）
                     document.getElementById('disp-name').innerText = user[2] || "名前なし";
                     document.getElementById('disp-id').innerText = 'ID：' + (user[1] || targetId);
                     document.getElementById('disp-clubs').innerText = user[5] || "未回答";
@@ -83,11 +84,11 @@
                     const xAccount = (user[3] || "").replace('@', '').trim();
                     const instaAccount = (user[4] || "").replace('@', '').trim();
 
-                    if (xAccount && xAccount !== "" && xAccount !== "undefined") {
-                        snsHtml += '<a href="x.com' + xAccount + '" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>';
+                    if (xAccount) {
+                        snsHtml += `<a href="x.com{xAccount}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
                     }
-                    if (instaAccount && instaAccount !== "" && instaAccount !== "undefined") {
-                        snsHtml += '<a href="instagram.com' + instaAccount + '" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>';
+                    if (instaAccount) {
+                        snsHtml += `<a href="instagram.com{instaAccount}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
                     }
                     document.getElementById('sns-container').innerHTML = snsHtml;
                     document.getElementById('profile-card').style.display = 'block';
