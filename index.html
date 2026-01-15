@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DJ Event Profile</title>
     <style>
-        /* ライトモードデザイン */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f5f5f5; color: #333; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
         .card { background: #fff; padding: 2rem; border-radius: 12px; width: 100%; max-width: 450px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-top: 10px; }
         h1 { color: #000; margin: 0 0 20px 0; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 1.2rem; line-height: 1.6; }
@@ -14,8 +13,7 @@
         .value { font-size: 1.1rem; color: #111; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
         .id-badge { text-align: center; margin-bottom: 1rem; }
         .id-badge span { background: #e0e0e0; color: #444; padding: 4px 12px; border-radius: 6px; font-size: 0.85rem; font-weight: bold; }
-        .loading { text-align: center; color: #999; margin-top: 50px; animation: blink 1.5s infinite; }
-        @keyframes blink { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        .loading { text-align: center; color: #999; margin-top: 50px; }
     </style>
 </head>
 <body>
@@ -28,7 +26,8 @@
 
         async function loadProfile() {
             const app = document.getElementById('app');
-            const targetId = decodeURIComponent(window.location.hash.substring(1)).trim(); 
+            const hashValue = window.location.hash.substring(1);
+            const targetId = decodeURIComponent(hashValue).trim(); 
 
             if (!targetId) {
                 app.innerHTML = '<h1>STEP ON -party- #5<br>ゲストプロフィール</h1><p style="text-align:center; color:#666;">QRコードをスキャンしてください</p>';
@@ -39,34 +38,43 @@
                 const response = await fetch(`${CSV_URL}&cache_bust=${new Date().getTime()}`);
                 const csvText = await response.text();
                 
-                const rows = csvText.split(/\r?\n/).map(row => {
+                // CSVパース（より確実に2次元配列化）
+                const rows = csvText.split(/\r?\n/).filter(line => line.trim() !== "").map(row => {
                     return row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
                 });
 
-                const headers = rows[0]; 
-                const userData = rows.find(row => row[1] === targetId);
+                if (rows.length < 1) return;
+
+                const headers = rows[0]; // 見出し行
+                
+                // 【重要】ID列がB列（index 1）にあると仮定して検索
+                // 文字列の「000」と数値の「0」が混同されないよう String() で変換して比較
+                const userData = rows.find((row, index) => index > 0 && String(row[1]).trim() === String(targetId));
 
                 if (userData) {
                     let html = `<div class="id-badge"><span>ID：${userData[1]}</span></div>`;
-                    // タイトルを変更し、#5の後に改行を挿入
                     html += `<h1>STEP ON -party- #5<br>ゲストプロフィール</h1>`;
                     
+                    // C列（index 2）以降をすべて表示
                     for (let i = 2; i < headers.length; i++) {
                         if (userData[i]) { 
-                            // 項目名から「（」以降を削除
                             const cleanLabel = headers[i].replace(/[（\(].*$/, "");
-                            
                             html += `
                                 <div class="info-item">
                                     <span class="label">${cleanLabel}</span>
                                     <span class="value">${userData[i]}</span>
-                                </div>
-                            `;
+                                </div>`;
                         }
                     }
                     app.innerHTML = html;
                 } else {
-                    app.innerHTML = `<h1>STEP ON -party- #5<br>ゲストプロフィール</h1><p style="text-align:center;">ID「${targetId}」の登録がありません。<br><br><small style="color:#888;">反映には最大5分かかる場合があります。</small></p>`;
+                    // 見つからなかった場合、デバッグ用にB列にある値を少し表示するようにします
+                    app.innerHTML = `<h1>STEP ON -party- #5<br>ゲストプロフィール</h1>
+                    <p style="text-align:center;">ID「${targetId}」の登録がありません。</p>
+                    <p style="font-size:0.7rem; color:#ccc; text-align:center; margin-top:20px;">
+                        Status: CSV loaded (${rows.length} rows)<br>
+                        Check: スプレッドシートの左から2番目の列に「${targetId}」があるか確認してください。
+                    </p>`;
                 }
             } catch (e) {
                 app.innerHTML = '<h1>ERROR</h1><p style="text-align:center;">データの取得に失敗しました。</p>';
@@ -74,8 +82,8 @@
             }
         }
 
-        window.addEventListener('hashchange', loadProfile);
-        loadProfile();
+            window.addEventListener('hashchange', loadProfile);
+            loadProfile();
     </script>
 </body>
 </html>
