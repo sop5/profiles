@@ -14,18 +14,18 @@
         /* カード下部に控えめな赤のライン */
         .card::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background-color: #ef4135; /* 赤 */ }
 
-        h1 { color: #000; margin: 0 0 20px 0; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px; font-size: 1.2rem; line-height: 1.6; }
+        h1 { color: #000; margin: 0; text-align: center; font-size: 1.2rem; line-height: 1.6; }
         
+        /* ID表示（タイトルの下）のスタイル */
+        .id-badge { text-align: center; margin: 10px 0 20px 0; border-bottom: 2px solid #eee; padding-bottom: 15px; }
+        .id-badge span { background: #f0f0f0; color: #888; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: normal; border: 1px solid #eee; }
+
         .info-item { margin-bottom: 18px; border-bottom: 1px solid #f0f0f0; padding-bottom: 10px; }
         
         /* 項目ラベルを青系に */
         .label { font-size: 0.8rem; color: #0055a4; display: block; margin-bottom: 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
         
         .value { font-size: 1.1rem; color: #111; white-space: pre-wrap; word-wrap: break-word; line-height: 1.5; }
-        
-        /* IDバッジを管理用として控えめ（薄いグレー）に変更 */
-        .id-badge { text-align: center; margin-bottom: 1rem; }
-        .id-badge span { background: #f0f0f0; color: #888; padding: 4px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: normal; border: 1px solid #eee; }
         
         .loading { text-align: center; color: #999; margin-top: 50px; animation: blink 1.5s infinite; }
         @keyframes blink { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
@@ -52,11 +52,9 @@
             }
 
             try {
-                // キャッシュ回避のためURLに時間を付与
                 const response = await fetch(`${CSV_URL}&cache_bust=${new Date().getTime()}`);
                 const csvText = await response.text();
                 
-                // CSVを行・列ごとに分解
                 const rows = csvText.split(/\r?\n/).map(row => {
                     return row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.replace(/^"(.*)"$/, '$1').trim());
                 });
@@ -64,16 +62,16 @@
                 if (rows.length < 1) return;
 
                 const headers = rows[0]; 
-                // B列（index 1）がIDと一致する行を検索
                 const userData = rows.find(row => row[1] === targetId);
 
                 if (userData) {
-                    let html = `<div class="id-badge"><span>ID：${userData[1]}</span></div>`;
-                    html += `<h1>${pageTitle}</h1>`;
+                    // 1. タイトルを先に表示
+                    let html = `<h1>${pageTitle}</h1>`;
+                    // 2. その下にIDを表示
+                    html += `<div class="id-badge"><span>ID：${userData[1]}</span></div>`;
                     
                     for (let i = 2; i < headers.length; i++) {
                         if (userData[i]) { 
-                            // 項目名から括弧以降（「（例：〜」など）を削除して表示
                             const cleanLabel = headers[i].replace(/[（\(].*$/, "");
                             
                             html += `
