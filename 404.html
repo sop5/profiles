@@ -33,43 +33,36 @@
     <script>
         const CSV_URL = 'docs.google.com';
         
-        // URLの末尾（/000など）からIDを抽出
-        const getIDFromURL = () => {
-            const pathSegments = window.location.pathname.split('/').filter(s => s.length > 0);
-            return pathSegments[pathSegments.length - 1];
-        };
-
-        const searchId = getIDFromURL();
+        const searchId = window.location.pathname.split('/').filter(s => s.length > 0).pop();
 
         fetch(CSV_URL)
             .then(res => res.text())
             .then(text => {
-                // CSVを解析
                 const rows = text.split(/\r?\n/).map(row => row.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1').trim()));
                 
-                // ID（B列=index 1）を検索（0埋めや文字列の不一致を許容する比較）
-                const userRow = rows.find(row => {
-                    if (!row[1]) return false;
-                    const rowId = row[1].toString().padStart(3, '0');
-                    const targetId = searchId.toString().padStart(3, '0');
-                    return rowId === targetId;
-                });
+                // B列（index 1）がID。000などが0にならないよう文字列で比較。
+                const userRow = rows.find(row => row[1] === searchId || String(row[1]).padStart(3, '0') === searchId);
 
                 document.getElementById('loading').style.display = 'none';
 
                 if (userRow) {
+                    // 各項目のインデックスを1つずつ調整（B=1, C=2, D=3, E=4, F=5, G=6, H=7）
                     document.getElementById('name').innerText = userRow[2] || "無名";
                     document.getElementById('id-label').innerText = 'ID：' + userRow[1];
-                    document.getElementById('clubs').innerText = userRow[5] || "";
-                    document.getElementById('area').innerText = userRow[6] || "";
-                    document.getElementById('intro').innerText = userRow[7] || "";
+                    document.getElementById('clubs').innerText = userRow[5] || "未回答";
+                    document.getElementById('area').innerText = userRow[6] || "未回答";
+                    document.getElementById('intro').innerText = userRow[7] || "未回答";
                     
                     let snsHtml = '';
                     const xId = (userRow[3] || "").replace('@','');
                     const instaId = (userRow[4] || "").replace('@','');
 
-                    if(xId) snsHtml += `<a href="x.com{xId}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
-                    if(instaId) snsHtml += `<a href="instagram.com{instaId}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
+                    if(xId && xId !== "") {
+                        snsHtml += `<a href="x.com{xId}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
+                    }
+                    if(instaId && instaId !== "") {
+                        snsHtml += `<a href="instagram.com{instaId}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
+                    }
                     
                     document.getElementById('sns-container').innerHTML = snsHtml;
                     document.getElementById('profile-card').style.display = 'block';
