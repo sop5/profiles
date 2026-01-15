@@ -72,7 +72,7 @@
                 document.getElementById('loading').style.display = 'none';
 
                 if (user && targetId !== "") {
-                    // C=2, B=1, F=5, G=6, H=7
+                    // 各項目の割り当て（B=1, C=2, D=3, E=4, F=5, G=6, H=7）
                     document.getElementById('disp-name').innerText = user[2] || "名前なし";
                     document.getElementById('disp-id').innerText = 'ID：' + (user[1] || targetId);
                     document.getElementById('disp-clubs').innerText = user[5] || "未回答";
