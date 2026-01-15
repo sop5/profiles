@@ -6,16 +6,19 @@
     <title>プロフィール</title>
     <link rel="stylesheet" href="cdnjs.cloudflare.com">
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; margin: 0; }
         .card { background: white; width: 100%; max-width: 420px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; display: none; }
         h1 { margin: 0 0 5px 0; font-size: 24px; color: #1a1a1a; }
         .id-label { color: #888; font-size: 14px; margin-bottom: 20px; font-weight: bold; }
         .sns-container { display: flex; justify-content: center; gap: 15px; margin: 20px 0; flex-wrap: wrap; }
-        .sns-btn { text-decoration: none; color: white; padding: 10px 22px; border-radius: 30px; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
+        .sns-btn { text-decoration: none; color: white; padding: 10px 22px; border-radius: 30px; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; transition: transform 0.2s; }
+        .sns-btn:active { transform: scale(0.95); }
         .btn-x { background: #000; }
         .btn-insta { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
         .label { font-weight: bold; font-size: 12px; color: #4b5563; background: #f3f4f6; padding: 4px 10px; border-radius: 6px; display: inline-block; margin-top: 15px; }
-        .content { margin-top: 6px; margin-bottom: 15px; line-height: 1.7; border-bottom: 1px solid #f3f4f6; padding-bottom: 12px; text-align: left; white-space: pre-wrap; color: #374151; }
+        .content { margin-top: 6px; margin-bottom: 15px; line-height: 1.7; border-bottom: 1px solid #f3f4f6; padding-bottom: 12px; text-align: left; white-space: pre-wrap; color: #374151; word-break: break-all; }
+        #loading { margin-top: 60px; color: #666; font-size: 16px; }
+        #error { margin-top: 60px; color: #ef4444; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -27,50 +30,75 @@
         <div class="label">観戦エリア</div><div id="disp-area" class="content"></div>
         <div class="label">自己紹介</div><div id="disp-intro" class="content"></div>
     </div>
-    <p id="loading">読み込み中...</p>
+    <p id="loading">プロフィールを読み込み中...</p>
     <p id="error" style="display:none">プロフィールが見つかりませんでした。</p>
 
     <script>
-        const CSV_URL = 'docs.google.com';
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRS0zEg8V_eSDWltQxsveXX0Zl0LSv7Awk9pnALuGlDMwDunbV4Oe3fF-1y6R2OWFMGqF5hX_X_ZMz/pub?gid=1412439924&single=true&output=csv';
         
-        const path = window.location.pathname.split('/').filter(s => s.length > 0);
-        const searchId = path[path.length - 1];
+        // ID取得：URLパラメータ（?id=）または パス末尾（/000）から取得
+        function getID() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('id')) return urlParams.get('id').trim();
+            const segments = window.location.pathname.split('/').filter(s => s.length > 0);
+            return segments[segments.length - 1] || "";
+        }
+
+        const targetId = getID();
 
         fetch(CSV_URL)
             .then(res => res.text())
             .then(text => {
-                // シンプルにカンマで分割
-                const rows = text.split(/\r?\n/).map(row => row.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1').trim()));
-                
-                // B列(index 1)をIDとして検索。000が0になっても一致するように比較。
+                // CSV解析：カンマで分割。引用符内のカンマにも対応
+                const rows = text.split(/\r?\n/).filter(l => l.trim().length > 0).map(line => {
+                    const result = [];
+                    let current = '';
+                    let inQuotes = false;
+                    for (let char of line) {
+                        if (char === '"') inQuotes = !inQuotes;
+                        else if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+                        else current += char;
+                    }
+                    result.push(current.trim());
+                    return result.map(cell => cell.replace(/^"(.*)"$/, '$1'));
+                });
+
+                // ID一致行を検索（B列=index 1）
                 const user = rows.find(row => {
-                    const rid = String(row[1] || "").padStart(3, '0');
-                    const tid = String(searchId || "").padStart(3, '0');
-                    return rid === tid;
+                    const rId = String(row[1] || "").padStart(3, '0');
+                    const tId = String(targetId).padStart(3, '0');
+                    return rId === tId;
                 });
 
                 document.getElementById('loading').style.display = 'none';
 
-                if (user) {
-                    // 列を直接指定 (B=1, C=2, D=3, E=4, F=5, G=6, H=7)
+                if (user && targetId !== "") {
+                    // 各項目のマッピング（B=1, C=2, D=3, E=4, F=5, G=6, H=7）
                     document.getElementById('disp-name').innerText = user[2] || "名前なし";
-                    document.getElementById('disp-id').innerText = 'ID：' + user[1];
+                    document.getElementById('disp-id').innerText = 'ID：' + (user[1] || targetId);
                     document.getElementById('disp-clubs').innerText = user[5] || "未回答";
                     document.getElementById('disp-area').innerText = user[6] || "未回答";
                     document.getElementById('disp-intro').innerText = user[7] || "未回答";
                     
                     let snsHtml = '';
-                    const x = (user[3] || "").replace('@','').trim();
-                    const insta = (user[4] || "").replace('@','').trim();
+                    const xAccount = (user[3] || "").replace('@', '').trim();
+                    const instaAccount = (user[4] || "").replace('@', '').trim();
 
-                    if(x) snsHtml += `<a href="x.com{x}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
-                    if(insta) snsHtml += `<a href="instagram.com{insta}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
-                    
+                    if (xAccount) {
+                        snsHtml += `<a href="x.com{xAccount}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
+                    }
+                    if (instaAccount) {
+                        snsHtml += `<a href="instagram.com{instaAccount}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
+                    }
                     document.getElementById('sns-container').innerHTML = snsHtml;
                     document.getElementById('profile-card').style.display = 'block';
                 } else {
                     document.getElementById('error').style.display = 'block';
                 }
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('loading').innerText = '通信エラーが発生しました。';
             });
     </script>
 </body>
