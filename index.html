@@ -3,20 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>プロフィールページ</title>
-    <!-- アイコンフォントの読み込みを修正 -->
+    <title>プロフィール</title>
     <link rel="stylesheet" href="cdnjs.cloudflare.com">
     <style>
-        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; margin: 0; }
         .card { background: white; width: 100%; max-width: 400px; padding: 30px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; display: none; }
-        h1 { margin-bottom: 5px; font-size: 24px; }
+        h1 { margin-bottom: 5px; font-size: 24px; color: #1a1a1a; }
         .id-label { color: #888; font-size: 14px; margin-bottom: 20px; font-weight: bold; }
         .sns-container { display: flex; justify-content: center; gap: 15px; margin: 20px 0; }
-        .sns-btn { text-decoration: none; color: white; padding: 10px 20px; border-radius: 25px; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
+        .sns-btn { text-decoration: none; color: white; padding: 10px 20px; border-radius: 25px; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; transition: opacity 0.2s; }
+        .sns-btn:hover { opacity: 0.8; }
         .btn-x { background: #000; }
         .btn-insta { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
         .label { font-weight: bold; font-size: 12px; color: #2c3e50; background: #e9ecef; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-top: 15px; }
-        .content { margin-top: 5px; margin-bottom: 15px; line-height: 1.6; border-bottom: 1px solid #eee; padding-bottom: 10px; text-align: left; white-space: pre-wrap; }
+        .content { margin-top: 5px; margin-bottom: 15px; line-height: 1.6; border-bottom: 1px solid #eee; padding-bottom: 10px; text-align: left; white-space: pre-wrap; word-wrap: break-word; }
+        #loading { margin-top: 50px; color: #666; }
+        #error { margin-top: 50px; color: #dc3545; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -32,18 +34,36 @@
     <p id="error" style="display:none">プロフィールが見つかりませんでした。</p>
 
     <script>
-        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRS0zEg8V_eSDWltQxsveXX0Zl0LSv7Awk9pnALuGlDMwDunbV4Oe3fF-1y6R2OWFMGqF5hX_X_ZMz/pub?gid=1412439924&single=true&output=csv';
-        const urlParams = new URLSearchParams(window.location.search);
-        const searchId = (urlParams.get('id') || "").trim();
+        const CSV_URL = 'docs.google.com';
+        
+        // ID取得ロジック（URLパラメータまたはパスから取得）
+        const getSearchId = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('id')) return urlParams.get('id').trim();
+            const pathSegments = window.location.pathname.split('/').filter(s => s.length > 0);
+            return pathSegments[pathSegments.length - 1] || "";
+        };
+
+        const searchId = getSearchId();
 
         fetch(CSV_URL)
             .then(res => res.text())
             .then(text => {
-                // CSVをパース。見出しを除外。
-                const allRows = text.split(/\r?\n/).filter(line => line.trim().length > 0).map(row => row.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1').trim()));
-                const dataRows = allRows.slice(1);
-                
-                // B列(index 1)で検索。000を0と誤認しないよう文字列比較。
+                // CSVを配列に変換（B列=1, C列=2, D列=3, E列=4, F列=5, G列=6, H列=7）
+                const rows = text.split(/\r?\n/).filter(line => line.trim().length > 0).map(row => {
+                    const result = [];
+                    let current = '';
+                    let inQuotes = false;
+                    for (let char of row) {
+                        if (char === '"') inQuotes = !inQuotes;
+                        else if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
+                        else current += char;
+                    }
+                    result.push(current.trim());
+                    return result.map(cell => cell.replace(/^"(.*)"$/, '$1'));
+                });
+
+                const dataRows = rows.slice(1); // 見出しをスキップ
                 const user = dataRows.find(row => {
                     const rowId = String(row[1] || "").padStart(3, '0');
                     const targetId = String(searchId).padStart(3, '0');
@@ -51,6 +71,7 @@
                 });
 
                 document.getElementById('loading').style.display = 'none';
+
                 if (user && searchId !== "") {
                     document.getElementById('name').innerText = user[2] || "無名";
                     document.getElementById('id-label').innerText = 'ID：' + user[1];
@@ -59,13 +80,13 @@
                     document.getElementById('intro').innerText = user[7] || "未回答";
                     
                     let snsHtml = '';
-                    const xId = String(user[3] || "").replace('@','');
-                    const instaId = String(user[4] || "").replace('@','');
+                    const xId = String(user[3] || "").replace('@', '');
+                    const instaId = String(user[4] || "").replace('@', '');
 
-                    if(xId && xId !== "undefined") {
+                    if (xId && xId !== "undefined") {
                         snsHtml += `<a href="x.com{xId}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
                     }
-                    if(instaId && instaId !== "undefined") {
+                    if (instaId && instaId !== "undefined") {
                         snsHtml += `<a href="instagram.com{instaId}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
                     }
                     document.getElementById('sns-container').innerHTML = snsHtml;
@@ -75,7 +96,7 @@
                 }
             })
             .catch(err => {
-                document.getElementById('loading').innerText = '通信エラー';
+                document.getElementById('loading').innerText = 'データ取得エラーが発生しました。';
             });
     </script>
 </body>
