@@ -6,19 +6,16 @@
     <title>プロフィール</title>
     <link rel="stylesheet" href="cdnjs.cloudflare.com">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        body { font-family: sans-serif; background: #f0f2f5; display: flex; justify-content: center; padding: 20px; margin: 0; }
         .card { background: white; width: 100%; max-width: 420px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; display: none; }
         h1 { margin: 0 0 5px 0; font-size: 24px; color: #1a1a1a; }
         .id-label { color: #888; font-size: 14px; margin-bottom: 20px; font-weight: bold; }
         .sns-container { display: flex; justify-content: center; gap: 15px; margin: 20px 0; flex-wrap: wrap; }
-        .sns-btn { text-decoration: none; color: white; padding: 10px 22px; border-radius: 30px; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; transition: transform 0.2s; }
-        .sns-btn:active { transform: scale(0.95); }
+        .sns-btn { text-decoration: none; color: white; padding: 10px 22px; border-radius: 30px; display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 14px; }
         .btn-x { background: #000; }
         .btn-insta { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
         .label { font-weight: bold; font-size: 12px; color: #4b5563; background: #f3f4f6; padding: 4px 10px; border-radius: 6px; display: inline-block; margin-top: 15px; }
-        .content { margin-top: 6px; margin-bottom: 15px; line-height: 1.7; border-bottom: 1px solid #f3f4f6; padding-bottom: 12px; text-align: left; white-space: pre-wrap; word-break: break-all; color: #374151; }
-        #loading { margin-top: 60px; color: #666; font-size: 16px; }
-        #error { margin-top: 60px; color: #ef4444; font-weight: bold; }
+        .content { margin-top: 6px; margin-bottom: 15px; line-height: 1.7; border-bottom: 1px solid #f3f4f6; padding-bottom: 12px; text-align: left; white-space: pre-wrap; color: #374151; }
     </style>
 </head>
 <body>
@@ -30,93 +27,50 @@
         <div class="label">観戦エリア</div><div id="disp-area" class="content"></div>
         <div class="label">自己紹介</div><div id="disp-intro" class="content"></div>
     </div>
-    <p id="loading">プロフィールを読み込み中...</p>
+    <p id="loading">読み込み中...</p>
     <p id="error" style="display:none">プロフィールが見つかりませんでした。</p>
 
     <script>
         const CSV_URL = 'docs.google.com';
         
-        function getTargetId() {
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('id')) return urlParams.get('id').trim();
-            const segments = window.location.pathname.split('/').filter(s => s.length > 0);
-            return segments[segments.length - 1] || "";
-        }
-
-        const targetId = getTargetId();
-
-        // CSVの1行を正しく分割する高度な関数
-        function parseCSVLine(line) {
-            const result = [];
-            let current = '';
-            let inQuotes = false;
-            for (let i = 0; i < line.length; i++) {
-                const char = line[i];
-                if (char === '"') inQuotes = !inQuotes;
-                else if (char === ',' && !inQuotes) {
-                    result.push(current.trim().replace(/^"(.*)"$/, '$1'));
-                    current = '';
-                } else current += char;
-            }
-            result.push(current.trim().replace(/^"(.*)"$/, '$1'));
-            return result;
-        }
+        const path = window.location.pathname.split('/').filter(s => s.length > 0);
+        const searchId = path[path.length - 1];
 
         fetch(CSV_URL)
             .then(res => res.text())
             .then(text => {
-                const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-                if (lines.length < 2) throw new Error("No data");
-
-                const headers = parseCSVLine(lines[0]);
-                const rows = lines.slice(1).map(parseCSVLine);
-
-                // 見出し名から列番号を自動取得（ズレを防止）
-                const idx = {
-                    id: headers.findIndex(h => h.includes('ID')),
-                    name: headers.findIndex(h => h.includes('名前')),
-                    x: headers.findIndex(h => h.includes('Xアカウント')),
-                    insta: headers.findIndex(h => h.includes('Instagram')),
-                    clubs: headers.findIndex(h => h.includes('クラブ')),
-                    area: headers.findIndex(h => h.includes('エリア')),
-                    intro: headers.findIndex(h => h.includes('自己紹介'))
-                };
-
-                // IDが一致する行を検索（0埋め考慮）
+                // シンプルにカンマで分割
+                const rows = text.split(/\r?\n/).map(row => row.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1').trim()));
+                
+                // B列(index 1)をIDとして検索。000が0になっても一致するように比較。
                 const user = rows.find(row => {
-                    const rId = String(row[idx.id] || "").padStart(3, '0');
-                    const tId = String(targetId).padStart(3, '0');
-                    return rId === tId;
+                    const rid = String(row[1] || "").padStart(3, '0');
+                    const tid = String(searchId || "").padStart(3, '0');
+                    return rid === tid;
                 });
 
                 document.getElementById('loading').style.display = 'none';
 
-                if (user && targetId !== "") {
-                    document.getElementById('disp-name').innerText = user[idx.name] || "名前なし";
-                    document.getElementById('disp-id').innerText = 'ID：' + (user[idx.id] || targetId);
-                    document.getElementById('disp-clubs').innerText = user[idx.clubs] || "未回答";
-                    document.getElementById('disp-area').innerText = user[idx.area] || "未回答";
-                    document.getElementById('disp-intro').innerText = user[idx.intro] || "未回答";
+                if (user) {
+                    // 列を直接指定 (B=1, C=2, D=3, E=4, F=5, G=6, H=7)
+                    document.getElementById('disp-name').innerText = user[2] || "名前なし";
+                    document.getElementById('disp-id').innerText = 'ID：' + user[1];
+                    document.getElementById('disp-clubs').innerText = user[5] || "未回答";
+                    document.getElementById('disp-area').innerText = user[6] || "未回答";
+                    document.getElementById('disp-intro').innerText = user[7] || "未回答";
                     
                     let snsHtml = '';
-                    const xAccount = (user[idx.x] || "").replace('@', '').trim();
-                    const instaAccount = (user[idx.insta] || "").replace('@', '').trim();
+                    const x = (user[3] || "").replace('@','').trim();
+                    const insta = (user[4] || "").replace('@','').trim();
 
-                    if (xAccount && xAccount !== "" && xAccount !== "undefined") {
-                        snsHtml += `<a href="x.com{xAccount}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
-                    }
-                    if (instaAccount && instaAccount !== "" && instaAccount !== "undefined") {
-                        snsHtml += `<a href="instagram.com{instaAccount}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
-                    }
+                    if(x) snsHtml += `<a href="x.com{x}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
+                    if(insta) snsHtml += `<a href="instagram.com{insta}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
+                    
                     document.getElementById('sns-container').innerHTML = snsHtml;
                     document.getElementById('profile-card').style.display = 'block';
                 } else {
                     document.getElementById('error').style.display = 'block';
                 }
-            })
-            .catch(err => {
-                console.error(err);
-                document.getElementById('loading').innerText = 'データの読み込みに失敗しました。';
             });
     </script>
 </body>
