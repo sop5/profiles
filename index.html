@@ -34,35 +34,36 @@
     <p id="error" style="display:none">プロフィールが見つかりませんでした。</p>
 
     <script>
-        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQRS0zEg8V_eSDWltQxsveXX0Zl0LSv7Awk9pnALuGlDMwDunbV4Oe3fF-1y6R2OWFMGqF5hX_X_ZMz/pub?gid=1412439924&single=true&output=csv';
+        const CSV_URL = 'docs.google.com';
         
         function getID() {
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('id')) return urlParams.get('id').trim();
-            const segments = window.location.pathname.split('/').filter(s => s.length > 0);
+            const segments = window.location.pathname.split('/').filter(function(s) { return s.length > 0; });
             return segments[segments.length - 1] || "";
         }
 
         const targetId = getID();
 
         fetch(CSV_URL)
-            .then(res => res.text())
-            .then(text => {
-                const rows = text.split(/\r?\n/).filter(l => l.trim().length > 0).map(line => {
+            .then(function(res) { return res.text(); })
+            .then(function(text) {
+                const rows = text.split(/\r?\n/).filter(function(l) { return l.trim().length > 0; }).map(function(line) {
                     const result = [];
                     let current = '';
                     let inQuotes = false;
-                    for (let char of line) {
+                    for (let i = 0; i < line.length; i++) {
+                        const char = line[i];
                         if (char === '"') inQuotes = !inQuotes;
                         else if (char === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
                         else current += char;
                     }
                     result.push(current.trim());
-                    return result.map(cell => cell.replace(/^"(.*)"$/, '$1'));
+                    return result.map(function(cell) { return cell.replace(/^"(.*)"$/, '$1'); });
                 });
 
                 const dataRows = rows.slice(1);
-                const user = dataRows.find(row => {
+                const user = dataRows.find(function(row) {
                     const rId = String(row[1] || "").padStart(3, '0');
                     const tId = String(targetId).padStart(3, '0');
                     return rId === tId;
@@ -71,7 +72,6 @@
                 document.getElementById('loading').style.display = 'none';
 
                 if (user && targetId !== "") {
-                    // A=0, B=1(ID), C=2(Name), D=3(X), E=4(Insta), F=5(Club), G=6(Area), H=7(Intro)
                     document.getElementById('disp-name').innerText = user[2] || "名前なし";
                     document.getElementById('disp-id').innerText = 'ID：' + (user[1] || targetId);
                     document.getElementById('disp-clubs').innerText = user[5] || "未回答";
@@ -83,10 +83,10 @@
                     const instaAccount = (user[4] || "").replace('@', '').trim();
 
                     if (xAccount && xAccount !== "" && xAccount !== "undefined") {
-                        snsHtml += `<a href="x.com{xAccount}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
+                        snsHtml += '<a href="x.com' + xAccount + '" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>';
                     }
                     if (instaAccount && instaAccount !== "" && instaAccount !== "undefined") {
-                        snsHtml += `<a href="instagram.com{instaAccount}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
+                        snsHtml += '<a href="instagram.com' + instaAccount + '" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>';
                     }
                     document.getElementById('sns-container').innerHTML = snsHtml;
                     document.getElementById('profile-card').style.display = 'block';
@@ -94,7 +94,7 @@
                     document.getElementById('error').style.display = 'block';
                 }
             })
-            .catch(err => {
+            .catch(function(err) {
                 console.error(err);
                 document.getElementById('loading').innerText = '通信エラーが発生しました。';
             });
