@@ -38,29 +38,35 @@
         fetch(CSV_URL)
             .then(res => res.text())
             .then(text => {
-                const rows = text.split(/\r?\n/).map(row => row.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1').trim()));
+                // CSVをパース（見出し行を除外してデータのみ抽出）
+                const allRows = text.split(/\r?\n/).filter(line => line.trim().length > 0).map(row => row.split(',').map(cell => cell.replace(/^"(.*)"$/, '$1').trim()));
+                const dataRows = allRows.slice(1); // 1行目の見出しをカット
                 
-                // B列（index 1）がID。000などが0にならないよう文字列で比較。
-                const userRow = rows.find(row => row[1] === searchId || String(row[1]).padStart(3, '0') === searchId);
+                // ID一致確認（B列 = index 1）を厳密に行う
+                const userRow = dataRows.find(row => {
+                    const rowId = String(row[1] || "").padStart(3, '0');
+                    const targetId = String(searchId || "").padStart(3, '0');
+                    return rowId === targetId;
+                });
 
                 document.getElementById('loading').style.display = 'none';
 
                 if (userRow) {
-                    // 各項目のインデックスを1つずつ調整（B=1, C=2, D=3, E=4, F=5, G=6, H=7）
-                    document.getElementById('name').innerText = userRow[2] || "無名";
-                    document.getElementById('id-label').innerText = 'ID：' + userRow[1];
-                    document.getElementById('clubs').innerText = userRow[5] || "未回答";
-                    document.getElementById('area').innerText = userRow[6] || "未回答";
-                    document.getElementById('intro').innerText = userRow[7] || "未回答";
+                    // 正しいインデックスで表示
+                    document.getElementById('name').innerText = userRow[2] || "無名";     // C列
+                    document.getElementById('id-label').innerText = 'ID：' + userRow[1]; // B列
+                    document.getElementById('clubs').innerText = userRow[5] || "未回答";  // F列
+                    document.getElementById('area').innerText = userRow[6] || "未回答";   // G列
+                    document.getElementById('intro').innerText = userRow[7] || "未回答";  // H列
                     
                     let snsHtml = '';
-                    const xId = (userRow[3] || "").replace('@','');
-                    const instaId = (userRow[4] || "").replace('@','');
+                    const xId = String(userRow[3] || "").replace('@',''); // D列
+                    const instaId = String(userRow[4] || "").replace('@',''); // E列
 
-                    if(xId && xId !== "") {
+                    if(xId && xId !== "undefined") {
                         snsHtml += `<a href="x.com{xId}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-x"><i class="fa-brands fa-x-twitter"></i> X</a>`;
                     }
-                    if(instaId && instaId !== "") {
+                    if(instaId && instaId !== "undefined") {
                         snsHtml += `<a href="instagram.com{instaId}" target="_blank" rel="noopener noreferrer" class="sns-btn btn-insta"><i class="fa-brands fa-instagram"></i> Instagram</a>`;
                     }
                     
@@ -71,7 +77,7 @@
                 }
             })
             .catch(err => {
-                document.getElementById('loading').innerText = 'データ取得エラー';
+                document.getElementById('loading').innerText = '通信エラー';
             });
     </script>
 </body>
