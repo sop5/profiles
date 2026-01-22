@@ -70,23 +70,17 @@
                     // 2. その下にIDを表示
                     html += `<div class="id-badge"><span>ID：${userData[1]}</span></div>`;
                     
-                    for (let i = 2; i < headers.length; i++) {
-                        if (userData[i]) { 
+                    if (userData[i]) { 
                                 const cleanLabel = headers[i].replace(/[（\(].*$/, "");
                                 if( i = 3){
                                 	html += `
+                                	const xUrl = "https://x.com/" + ${userData[i]}.replace('@', '').replace('＠', '')
                              	<div class="info-item">
                                     <span class="label">${cleanLabel}</span>
-                                    <span class="value"><a href="https://x.com/${userData[i]}.replace('@', '').replace('＠', '')">${userData[i]}</a></span>
+                                    <span class="value"><a href='xUrl'>${userData[i]}</a></span>
                                 </div>
                             `;                           	
                             }else if(i = 4){
-                                	html += `
-                             	<div class="info-item">
-                                    <span class="label">${cleanLabel}</span>
-                                    <span class="value"><a href="hhttps://www.instagram.com/${userData[i]}.replace('@', '').replace('＠', '')">${userData[i]}</a></span>
-                                </div>
-                            	`; 
                             }else{
                             	html += `
                             	<div class="info-item">
